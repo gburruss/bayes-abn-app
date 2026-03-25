@@ -35,10 +35,6 @@ def beta_from_mean_and_ess(mean, ess):
     return mean * ess, (1 - mean) * ess
 
 
-def beta_from_clicks_and_nonclicks(prior_clicks, prior_nonclicks):
-    return prior_clicks, prior_nonclicks
-
-
 def validate_mean_ess(mean, ess):
     return (0 < mean < 1) and (ess > 0)
 
@@ -49,19 +45,10 @@ def validate_mean_range(mean, lower, upper):
     return (0 < lower < 1) and (0 < mean < 1) and (0 < upper < 1) and (lower < mean < upper)
 
 
-def validate_clicks_nonclicks(prior_clicks, prior_nonclicks):
-    return (prior_clicks > 0) and (prior_nonclicks > 0)
-
-
-def derive_prior(prior_mode, mean=None, ess=None, lower=None, upper=None, prior_clicks=None, prior_nonclicks=None):
-    if prior_mode == "Mean click rate + effective sample size":
+def derive_prior(mean, prior_mode, ess=None, lower=None, upper=None):
+    if prior_mode == "Mean + effective sample size":
         return beta_from_mean_and_ess(mean, ess)
-    elif prior_mode == "Mean click rate + plausible range":
-        return fit_beta_from_mean_and_interval(mean, lower, upper, interval_mass=0.95)
-    elif prior_mode == "Prior clicks + prior non-clicks":
-        return beta_from_clicks_and_nonclicks(prior_clicks, prior_nonclicks)
-    else:
-        raise ValueError("Unsupported prior mode.")
+    return fit_beta_from_mean_and_interval(mean, lower, upper, interval_mass=0.95)
 
 
 def safe_beta_pdf(x, a, b):
@@ -184,44 +171,6 @@ def build_overlap_table(posterior_param_rows, grid_max):
     return pd.DataFrame(rows)
 
 
-def build_pairwise_comparison_table(draw_matrix, variant_names, eps=1e-12):
-    rows = []
-
-    for i in range(len(variant_names)):
-        for j in range(i + 1, len(variant_names)):
-            rr_ij = draw_matrix[i] / np.clip(draw_matrix[j], eps, None)
-            rr_ji = draw_matrix[j] / np.clip(draw_matrix[i], eps, None)
-
-            prob_i_lower = float((draw_matrix[i] < draw_matrix[j]).mean())
-            prob_j_lower = float((draw_matrix[j] < draw_matrix[i]).mean())
-
-            med_rr_ij = float(np.median(rr_ij))
-            low_rr_ij, high_rr_ij = np.quantile(rr_ij, [0.025, 0.975])
-
-            med_rr_ji = float(np.median(rr_ji))
-            low_rr_ji, high_rr_ji = np.quantile(rr_ji, [0.025, 0.975])
-
-            rows.append({
-                "Variant A": variant_names[i],
-                "Variant B": variant_names[j],
-                "Pr(A < B)": round(prob_i_lower, 4),
-                "Median risk ratio (A/B)": round(med_rr_ij, 3),
-                "95% CrI for RR": f"[{low_rr_ij:.3f}, {high_rr_ij:.3f}]",
-                "Pr(RR < 1)": round(float((rr_ij < 1).mean()), 4)
-            })
-
-            rows.append({
-                "Variant A": variant_names[j],
-                "Variant B": variant_names[i],
-                "Pr(A < B)": round(prob_j_lower, 4),
-                "Median risk ratio (A/B)": round(med_rr_ji, 3),
-                "95% CrI for RR": f"[{low_rr_ji:.3f}, {high_rr_ji:.3f}]",
-                "Pr(RR < 1)": round(float((rr_ji < 1).mean()), 4)
-            })
-
-    return pd.DataFrame(rows)
-
-
 # -----------------------------
 # App header
 # -----------------------------
@@ -231,8 +180,8 @@ st.write(
 )
 
 st.info(
-    "This tool estimates click rates using Bayesian updating. Lower click rates indicate lower phishing risk. "
-    "Use probabilities, uncertainty, expected loss, and pairwise risk comparisons together."
+    "This tool estimates click rates using Bayesian updating. It does not choose a winner automatically. "
+    "Use probabilities, uncertainty, and expected loss together."
 )
 
 colors = ["C0", "C1", "C2", "C3", "C4", "C5"]
@@ -244,39 +193,26 @@ colors = ["C0", "C1", "C2", "C3", "C4", "C5"]
 st.subheader("Step 1. Number of variants")
 k = st.number_input("Number of variants", min_value=1, max_value=6, value=2, step=1)
 
-st.subheader("Step 2. Name the variants")
+st.subheader("Step 2. Prior structure")
+same_prior_for_all = st.toggle("Use the same prior for all variants", value=True)
+
+st.subheader("Step 3. Prior input method")
+prior_mode = st.radio(
+    "Choose prior input method",
+    options=["Mean + effective sample size", "Mean + plausible range"]
+)
+
+if prior_mode == "Mean + plausible range":
+    st.info(
+        "In range mode, the lower and upper values are treated as approximate central 95% prior bounds. "
+        "Because a Beta prior has only two parameters, the fitted interval may not match your entered bounds exactly."
+    )
+
+st.subheader("Step 4. Name the variants")
 variant_names = []
 for i in range(k):
     name = st.text_input(f"Variant {i+1} name", value=f"Variant {i+1}", key=f"name_{i}")
     variant_names.append(name)
-
-st.subheader("Step 3. Prior structure")
-same_prior_for_all = st.toggle("Use the same prior for all variants", value=True)
-
-st.subheader("Step 4. Provide your expert prior estimate of the click rate")
-prior_mode = st.radio(
-    "Choose the way you want to express your prior belief",
-    options=[
-        "Mean click rate + effective sample size",
-        "Mean click rate + plausible range",
-        "Prior clicks + prior non-clicks"
-    ]
-)
-
-if prior_mode == "Mean click rate + plausible range":
-    st.info(
-        "In this option, the lower and upper values are treated as approximate central 95% prior bounds. "
-        "Because a Beta prior has only two parameters, the fitted interval may not match your entered bounds exactly."
-    )
-elif prior_mode == "Prior clicks + prior non-clicks":
-    st.info(
-        "In this option, you express the prior directly as pseudo-counts. "
-        "For example, 2 prior clicks and 18 prior non-clicks imply a prior mean click rate of 0.10."
-    )
-else:
-    st.info(
-        "In this option, you provide an expected click rate and how much prior weight to give that belief."
-    )
 
 st.subheader("Step 5. Enter priors")
 
@@ -284,76 +220,16 @@ prior_inputs = []
 
 if same_prior_for_all:
     st.markdown("### Common prior for all variants")
+    mean = st.number_input("Expected click rate", min_value=0.001, max_value=0.999, value=0.10, step=0.01, key="common_mean")
 
-    if prior_mode == "Mean click rate + effective sample size":
-        mean = st.number_input(
-            "I expect about this proportion of users to click",
-            min_value=0.001,
-            max_value=0.999,
-            value=0.10,
-            step=0.01,
-            key="common_mean"
-        )
-        ess = st.number_input(
-            "This is about as informative as having seen this many similar emails before",
-            min_value=0.1,
-            value=10.0,
-            step=1.0,
-            key="common_ess"
-        )
+    if prior_mode == "Mean + effective sample size":
+        ess = st.number_input("Prior effective sample size", min_value=0.1, value=10.0, step=1.0, key="common_ess")
         lower = None
         upper = None
-        prior_clicks = None
-        prior_nonclicks = None
-
-    elif prior_mode == "Mean click rate + plausible range":
-        mean = st.number_input(
-            "I think the click rate is about",
-            min_value=0.001,
-            max_value=0.999,
-            value=0.10,
-            step=0.01,
-            key="common_mean"
-        )
-        lower = st.number_input(
-            "but it could reasonably be as low as",
-            min_value=0.001,
-            max_value=0.999,
-            value=0.05,
-            step=0.01,
-            key="common_low"
-        )
-        upper = st.number_input(
-            "and as high as",
-            min_value=0.001,
-            max_value=0.999,
-            value=0.20,
-            step=0.01,
-            key="common_high"
-        )
-        ess = None
-        prior_clicks = None
-        prior_nonclicks = None
-
     else:
-        prior_clicks = st.number_input(
-            "I would expect about this many clicks in my hypothetical prior sample",
-            min_value=0.001,
-            value=2.0,
-            step=0.5,
-            key="common_prior_clicks"
-        )
-        prior_nonclicks = st.number_input(
-            "and about this many non-clicks in that same hypothetical prior sample",
-            min_value=0.001,
-            value=18.0,
-            step=0.5,
-            key="common_prior_nonclicks"
-        )
-        mean = None
+        lower = st.number_input("Approximate lower 95% prior bound", min_value=0.001, max_value=0.999, value=0.05, step=0.01, key="common_low")
+        upper = st.number_input("Approximate upper 95% prior bound", min_value=0.001, max_value=0.999, value=0.20, step=0.01, key="common_high")
         ess = None
-        lower = None
-        upper = None
 
     for i in range(k):
         prior_inputs.append({
@@ -362,26 +238,23 @@ if same_prior_for_all:
             "ess": ess,
             "low": lower,
             "high": upper,
-            "prior_clicks": prior_clicks,
-            "prior_nonclicks": prior_nonclicks,
             "color": colors[i]
         })
-
 else:
     for i in range(k):
         st.markdown(f"### Prior for {variant_names[i]}")
+        mean = st.number_input(
+            f"Expected click rate for {variant_names[i]}",
+            min_value=0.001,
+            max_value=0.999,
+            value=0.10,
+            step=0.01,
+            key=f"mean_{i}"
+        )
 
-        if prior_mode == "Mean click rate + effective sample size":
-            mean = st.number_input(
-                f"For {variant_names[i]}, I expect the click rate to be about",
-                min_value=0.001,
-                max_value=0.999,
-                value=0.10,
-                step=0.01,
-                key=f"mean_{i}"
-            )
+        if prior_mode == "Mean + effective sample size":
             ess = st.number_input(
-                f"For {variant_names[i]}, this is about as informative as having seen this many similar emails before",
+                f"Prior effective sample size for {variant_names[i]}",
                 min_value=0.1,
                 value=10.0,
                 step=1.0,
@@ -389,20 +262,9 @@ else:
             )
             lower = None
             upper = None
-            prior_clicks = None
-            prior_nonclicks = None
-
-        elif prior_mode == "Mean click rate + plausible range":
-            mean = st.number_input(
-                f"For {variant_names[i]}, I think the click rate is about",
-                min_value=0.001,
-                max_value=0.999,
-                value=0.10,
-                step=0.01,
-                key=f"mean_{i}"
-            )
+        else:
             lower = st.number_input(
-                f"For {variant_names[i]}, but it could reasonably be as low as",
+                f"Approximate lower 95% prior bound for {variant_names[i]}",
                 min_value=0.001,
                 max_value=0.999,
                 value=0.05,
@@ -410,7 +272,7 @@ else:
                 key=f"low_{i}"
             )
             upper = st.number_input(
-                f"For {variant_names[i]}, and as high as",
+                f"Approximate upper 95% prior bound for {variant_names[i]}",
                 min_value=0.001,
                 max_value=0.999,
                 value=0.20,
@@ -418,28 +280,6 @@ else:
                 key=f"high_{i}"
             )
             ess = None
-            prior_clicks = None
-            prior_nonclicks = None
-
-        else:
-            prior_clicks = st.number_input(
-                f"For {variant_names[i]}, I would expect about this many clicks in my hypothetical prior sample",
-                min_value=0.001,
-                value=2.0,
-                step=0.5,
-                key=f"prior_clicks_{i}"
-            )
-            prior_nonclicks = st.number_input(
-                f"For {variant_names[i]}, and about this many non-clicks in that same hypothetical prior sample",
-                min_value=0.001,
-                value=18.0,
-                step=0.5,
-                key=f"prior_nonclicks_{i}"
-            )
-            mean = None
-            ess = None
-            lower = None
-            upper = None
 
         prior_inputs.append({
             "name": variant_names[i],
@@ -447,8 +287,6 @@ else:
             "ess": ess,
             "low": lower,
             "high": upper,
-            "prior_clicks": prior_clicks,
-            "prior_nonclicks": prior_nonclicks,
             "color": colors[i]
         })
 
@@ -463,12 +301,10 @@ prior_highs = []
 mismatch_notes = []
 
 for p in prior_inputs:
-    if prior_mode == "Mean click rate + effective sample size":
+    if prior_mode == "Mean + effective sample size":
         is_valid = validate_mean_ess(p["mean"], p["ess"])
-    elif prior_mode == "Mean click rate + plausible range":
-        is_valid = validate_mean_range(p["mean"], p["low"], p["high"])
     else:
-        is_valid = validate_clicks_nonclicks(p["prior_clicks"], p["prior_nonclicks"])
+        is_valid = validate_mean_range(p["mean"], p["low"], p["high"])
 
     if not is_valid:
         st.error(f"{p['name']}: invalid prior inputs.")
@@ -476,20 +312,17 @@ for p in prior_inputs:
         continue
 
     a, b = derive_prior(
-        prior_mode=prior_mode,
         mean=p["mean"],
+        prior_mode=prior_mode,
         ess=p["ess"],
         lower=p["low"],
-        upper=p["high"],
-        prior_clicks=p["prior_clicks"],
-        prior_nonclicks=p["prior_nonclicks"]
+        upper=p["high"]
     )
 
     fitted_low, fitted_high = safe_beta_quantiles(a, b)
     ess_value = a + b
-    fitted_mean = a / (a + b)
 
-    if prior_mode == "Mean click rate + plausible range":
+    if prior_mode == "Mean + plausible range":
         diff = abs(fitted_low - p["low"]) + abs(fitted_high - p["high"])
         if diff > 0.05:
             mismatch_notes.append(
@@ -500,7 +333,7 @@ for p in prior_inputs:
         "name": p["name"],
         "a": a,
         "b": b,
-        "mean": fitted_mean,
+        "mean": a / (a + b),
         "low": fitted_low,
         "high": fitted_high,
         "ess": ess_value,
@@ -509,7 +342,7 @@ for p in prior_inputs:
 
     row = {
         "Variant": p["name"],
-        "Prior mean": round(fitted_mean, 4),
+        "Prior mean": round(a / (a + b), 4),
         "Prior alpha": round(a, 3),
         "Prior beta": round(b, 3),
         "Prior effective sample size": round(ess_value, 3),
@@ -518,16 +351,12 @@ for p in prior_inputs:
         "Fitted 95% CI": f"[{fitted_low:.3f}, {fitted_high:.3f}]"
     }
 
-    if prior_mode == "Mean click rate + plausible range":
+    if prior_mode == "Mean + plausible range":
         row["Input lower"] = round(p["low"], 4)
         row["Input upper"] = round(p["high"], 4)
 
-    if prior_mode == "Mean click rate + effective sample size":
-        row["User-entered ESS"] = round(p["ess"], 3)
-
-    if prior_mode == "Prior clicks + prior non-clicks":
-        row["Prior clicks"] = round(p["prior_clicks"], 3)
-        row["Prior non-clicks"] = round(p["prior_nonclicks"], 3)
+    if prior_mode == "Mean + effective sample size":
+        row["User-entered prior ESS"] = round(p["ess"], 3)
 
     prior_summary_rows.append(row)
     prior_highs.append(fitted_high)
@@ -636,15 +465,20 @@ for i, name in enumerate(variant_names):
 # Decision framing
 # -----------------------------
 st.subheader("Step 8. Decision framing")
-st.write("This analysis is framed as a phishing-risk problem. Lower click rates are preferred.")
+
+decision_direction = st.radio(
+    "What outcome are you trying to optimize?",
+    ["Minimize click rate (phishing risk)", "Maximize click rate (conversion)"]
+)
+
 reference_arm = st.selectbox("Reference (control) variant", variant_names)
 show_priors = st.toggle("Show priors on posterior plot", value=True)
 n_draws = st.number_input("Posterior draws", min_value=5000, max_value=50000, value=20000, step=5000)
 
 st.caption(
     "Posterior draws are simulated values from each variant's posterior distribution. "
-    "They are used to estimate probabilities such as which variant is lowest-risk, whether one variant is lower than another, "
-    "and how much worse a choice could be on average. The default is usually fine and can usually be left unchanged."
+    "They are used to estimate probabilities such as which variant is lowest-risk or beats the control. "
+    "The default is usually fine and can usually be left unchanged."
 )
 
 run = st.button("Run Bayesian update", disabled=not prior_valid)
@@ -725,9 +559,14 @@ if run and prior_valid:
     draw_matrix = np.array(draw_list)
     control_idx = variant_names.index(reference_arm)
 
-    winners = np.argmin(draw_matrix, axis=0)
-    best_label = "Pr(lowest click rate)"
-    pair_label = "Pr(lower than control)"
+    if decision_direction == "Maximize click rate (conversion)":
+        winners = np.argmax(draw_matrix, axis=0)
+        best_label = "Pr(best)"
+        pair_label = "Pr(beat control)"
+    else:
+        winners = np.argmin(draw_matrix, axis=0)
+        best_label = "Pr(lowest click rate)"
+        pair_label = "Pr(lower than control)"
 
     best_probs = [(winners == i).mean() for i in range(draw_matrix.shape[0])]
 
@@ -740,8 +579,12 @@ if run and prior_valid:
             posterior_rows[i]["Expected loss vs control"] = 0.0
             continue
 
-        pair_prob = (draw_matrix[i] < draw_matrix[control_idx]).mean()
-        loss = np.maximum(0, draw_matrix[i] - draw_matrix[control_idx]).mean()
+        if decision_direction == "Maximize click rate (conversion)":
+            pair_prob = (draw_matrix[i] > draw_matrix[control_idx]).mean()
+            loss = np.maximum(0, draw_matrix[control_idx] - draw_matrix[i]).mean()
+        else:
+            pair_prob = (draw_matrix[i] < draw_matrix[control_idx]).mean()
+            loss = np.maximum(0, draw_matrix[i] - draw_matrix[control_idx]).mean()
 
         posterior_rows[i][pair_label] = round(float(pair_prob), 4)
         posterior_rows[i]["Expected loss vs control"] = round(float(loss), 5)
@@ -806,17 +649,6 @@ if run and prior_valid:
     st.subheader("Posterior summary")
     st.dataframe(posterior_df, use_container_width=True)
 
-    st.subheader("Pairwise comparison table")
-    pairwise_df = build_pairwise_comparison_table(draw_matrix, variant_names)
-    if len(pairwise_df) > 0:
-        st.dataframe(pairwise_df, use_container_width=True)
-        st.caption(
-            "Pr(A < B) is the posterior probability that Variant A has a lower click rate than Variant B. "
-            "The risk ratio compares Variant A to Variant B. Values below 1 indicate lower risk for Variant A."
-        )
-    else:
-        st.write("Pairwise comparisons require at least two variants.")
-
     st.subheader("Posterior overlap table")
     overlap_df = build_overlap_table(posterior_param_rows, grid_max=x_post_max)
     if len(overlap_df) > 0:
@@ -834,5 +666,5 @@ if run and prior_valid:
     st.subheader("Interpretation note")
     st.write(
         "Lower posterior means indicate lower estimated click risk. "
-        "Use the pairwise comparison table, posterior overlap table, posterior probabilities, and expected loss versus control together when comparing variants."
+        "Use the posterior probability columns, the overlap table, and expected loss versus control together when comparing variants."
     )
