@@ -247,7 +247,13 @@ colors = ["C0", "C1", "C2", "C3", "C4", "C5"]
 # -----------------------------
 # Inputs
 # -----------------------------
-st.subheader("Step 1. Number of Variants. Add each group or condition you want to compare. Each group, campaign, or phishing message counts as a ‘variant.’")
+st.subheader("Step 1. Number of Variants.")
+
+st.subheader(
+    "Add each group or condition you want to compare. "
+    "Each group, campaign, or phishing message counts as a ‘variant.’"
+)
+
 k = st.number_input("Number of variants", min_value=1, max_value=6, value=2, step=1)
 
 st.subheader("Step 2. Name the variants")
