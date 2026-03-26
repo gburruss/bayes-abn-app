@@ -614,31 +614,34 @@ if prior_valid:
 st.subheader("Step 7. Enter observed click rates")
 
 variant_data = []
+
 for i, name in enumerate(variant_names):
+
     st.markdown(f"### {name}")
-col1, col2 = st.columns([1, 1])
 
-with col1:
-    st.markdown("<div style='max-width:150px;'>", unsafe_allow_html=True)
-    clicks = st.number_input(
-        f"Observed clicks for {name}",
-        min_value=0,
-        value=10,
-        step=1,
-        key=f"clicks_{i}"
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    col1, col2 = st.columns([1, 1])
 
-with col2:
-    st.markdown("<div style='max-width:150px;'>", unsafe_allow_html=True)
-    no_clicks = st.number_input(
-        f"Observed no-clicks for {name}",
-        min_value=0,
-        value=90,
-        step=1,
-        key=f"noclicks_{i}"
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    with col1:
+        st.markdown("<div style='max-width:150px;'>", unsafe_allow_html=True)
+        clicks = st.number_input(
+            f"Observed clicks for {name}",
+            min_value=0,
+            value=10,
+            step=1,
+            key=f"clicks_{i}"
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("<div style='max-width:150px;'>", unsafe_allow_html=True)
+        no_clicks = st.number_input(
+            f"Observed no-clicks for {name}",
+            min_value=0,
+            value=90,
+            step=1,
+            key=f"noclicks_{i}"
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
 
     if prior_valid:
         variant_data.append({
@@ -648,7 +651,6 @@ with col2:
             "prior": prior_records[i],
             "color": colors[i]
         })
-
 
 # -----------------------------
 # Decision framing
