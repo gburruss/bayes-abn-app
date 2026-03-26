@@ -616,7 +616,7 @@ st.subheader("Step 7. Enter observed data")
 variant_data = []
 for i, name in enumerate(variant_names):
     st.markdown(f"### {name}")
-   col1, col2 = st.columns([1, 1])
+    col1, col2 = st.columns([1, 1])
 
     with col1:
         clicks = st.number_input(
