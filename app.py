@@ -685,6 +685,9 @@ run = st.button("Run Bayesian update", disabled=not prior_valid)
 # -----------------------------
 if run and prior_valid:
     st.subheader("Step 9. Posterior analysis")
+st.info(
+    "Each updated prior (called the posterior) is shown below. The priors are shown as dashed curves."
+)    
 
     posterior_rows = []
     updating_rows = []
