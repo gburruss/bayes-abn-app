@@ -5,8 +5,15 @@ import matplotlib.pyplot as plt
 from scipy.stats import beta
 from scipy.optimize import minimize_scalar
 
+
 st.set_page_config(page_title="Bayesian Phishing Risk Estimator", layout="wide")
 
+st.title("Bayesian Phishing Risk Estimator")
+
+st.write(
+    "Developed by the Cybercrime Interdisciplinary Behavioral Research Laboratory "
+    "(CIBR Lab) at the University of South Florida."
+)
 
 # -----------------------------
 # Helper functions
