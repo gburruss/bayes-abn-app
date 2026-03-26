@@ -244,12 +244,11 @@ def build_pairwise_comparison_table(draw_matrix, variant_names, eps=1e-12):
 # -----------------------------
 st.title("Bayesian Phishing Risk Estimator")
 st.write(
-    "Set priors for phishing click rates, inspect those priors, then update them with observed clicks and no-clicks."
+    "Set priors for click rates, check them, and update them with observed data. The posterior is the revised phishing risk, combining prior belief and evidence."
 )
 
 st.info(
-    "This tool estimates click rates using Bayesian updating. Lower click rates indicate lower phishing risk. "
-    "Use probabilities, uncertainty, expected loss, and pairwise risk comparisons together."
+    "This tool estimates click rates using Bayesian updating. Lower click rates mean lower phishing risk. A click rate is simply the proportion of users who click on a phishing link."
 )
 
 colors = ["C0", "C1", "C2", "C3", "C4", "C5"]
