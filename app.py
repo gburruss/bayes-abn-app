@@ -247,7 +247,7 @@ colors = ["C0", "C1", "C2", "C3", "C4", "C5"]
 # -----------------------------
 # Inputs
 # -----------------------------
-st.subheader("Step 1. Number of variants")
+st.subheader("Step 1. Number of Variants. Add each group or condition you want to compare. Each group, campaign, or phishing message counts as a ‘variant.’")
 k = st.number_input("Number of variants", min_value=1, max_value=6, value=2, step=1)
 
 st.subheader("Step 2. Name the variants")
@@ -261,7 +261,7 @@ same_prior_for_all = st.toggle("Use the same prior for all variants", value=True
 
 st.subheader("Step 4. Provide your expert prior estimate of the click rate")
 prior_mode = st.radio(
-    "Choose the way you want to express your prior belief",
+    "Choose how you want to express your prior belief about the click rate.",
     options=[
         "Mean click rate + effective sample size",
         "Mean click rate + plausible range",
@@ -277,7 +277,7 @@ if prior_mode == "Mean click rate + plausible range":
 elif prior_mode == "Prior clicks + prior non-clicks":
     st.info(
         "In this option, you express the prior directly as pseudo-counts. "
-        "For example, 2 prior clicks and 18 prior non-clicks imply a prior mean click rate of 0.10."
+        "For example, 2 clicks and 18 non‑clicks (20 total) give a prior mean click rate of 0.10."
     )
 else:
     st.info(
