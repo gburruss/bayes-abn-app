@@ -622,7 +622,7 @@ for i, name in enumerate(variant_names):
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.markdown("<div style='max-width:150px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='max-width:100px;'>", unsafe_allow_html=True)
         clicks = st.number_input(
             f"Observed clicks for {name}",
             min_value=0,
@@ -633,7 +633,7 @@ for i, name in enumerate(variant_names):
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
-        st.markdown("<div style='max-width:150px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='max-width:100px;'>", unsafe_allow_html=True)
         no_clicks = st.number_input(
             f"Observed no-clicks for {name}",
             min_value=0,
