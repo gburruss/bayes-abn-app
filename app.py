@@ -6,6 +6,18 @@ from scipy.stats import beta
 from scipy.optimize import minimize_scalar
 
 st.set_page_config(page_title="Bayesian Phishing Risk Estimator", layout="wide")
+st.markdown(
+    """
+    <style>
+    /* Shrink all number input boxes */
+    input[type=number] {
+        width: 4ch !important;
+        text-align: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 st.image("logo.png", width=200)
 
