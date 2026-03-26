@@ -20,10 +20,14 @@ st.markdown(
 
 st.image("logo.png", width=200)
 
-st.caption(
+st.markdown(
+    "<p style='font-size:1.0rem;'>"
     "Developed by the Cybercrime Interdisciplinary Behavioral Research Laboratory "
     "(CIBR Lab) at the University of South Florida."
+    "</p>",
+    unsafe_allow_html=True
 )
+
 
 # -----------------------------
 # Helper functions
