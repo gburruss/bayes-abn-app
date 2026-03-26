@@ -639,7 +639,6 @@ with col2:
         key=f"noclicks_{i}"
     )
     st.markdown("</div>", unsafe_allow_html=True)
-``
 
     if prior_valid:
         variant_data.append({
