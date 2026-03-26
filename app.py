@@ -9,10 +9,9 @@ st.set_page_config(page_title="Bayesian Phishing Risk Estimator", layout="wide")
 st.markdown(
     """
     <style>
-    /* Shrink all number input boxes */
-    input[type=number] {
-        width: 4ch !important;
-        text-align: center;
+    /* Target Streamlit number_input width */
+    div[data-baseweb="input"] {
+        width: 80px !important;   /* Adjust width here */
     }
     </style>
     """,
