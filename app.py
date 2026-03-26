@@ -11,7 +11,7 @@ st.markdown(
     <style>
     /* Target Streamlit number_input width */
     div[data-baseweb="input"] {
-        width: 80px !important;   /* Adjust width here */
+        width: 90px !important;   /* Adjust width here */
     }
     </style>
     """,
