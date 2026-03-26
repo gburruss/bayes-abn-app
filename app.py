@@ -9,8 +9,6 @@ st.set_page_config(page_title="Bayesian Phishing Risk Estimator", layout="wide")
 
 st.image("logo.png", width=200)
 
-st.title("Bayesian Phishing Risk Estimator")
-
 st.caption(
     "Developed by the Cybercrime Interdisciplinary Behavioral Research Laboratory "
     "(CIBR Lab) at the University of South Florida."
