@@ -245,7 +245,7 @@ st.subheader("Step 1. Number of Variants")
 st.markdown(
     "Add each group or condition you want to compare. Each group, campaign, or phishing message counts as a variant."
 )
-k = st.number_input("Number of variants", min_value=1, max_value=6, value=2, step=1)
+k = st.number_input("Number of variants", min_value=1, max_value=4, value=1, step=1)
 
 st.subheader("Step 2. Name the Variants")
 variant_names = []
@@ -646,7 +646,12 @@ for i, name in enumerate(variant_names):
 
 st.subheader("Step 8. Decision Framing")
 st.write("This analysis is framed as a phishing-risk problem. Lower click rates are preferred.")
-reference_arm = st.selectbox("Reference (control) variant", variant_names)
+
+if k > 1:
+    reference_arm = st.selectbox("Reference (control) variant", variant_names)
+else:
+    reference_arm = variant_names[0]
+
 show_priors = st.toggle("Show priors on posterior plot", value=True)
 n_draws = st.number_input("Posterior draws", min_value=5000, max_value=50000, value=20000, step=5000)
 
