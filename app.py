@@ -74,12 +74,20 @@ def validate_clicks_nonclicks(prior_clicks, prior_nonclicks):
     return (prior_clicks > 0) and (prior_nonclicks > 0)
 
 
-def derive_prior(prior_mode, mean=None, ess=None, lower=None, upper=None, prior_clicks=None, prior_nonclicks=None):
-    if prior_mode == "Mean click rate + effective sample size":
+def derive_prior(
+    prior_mode,
+    mean=None,
+    ess=None,
+    lower=None,
+    upper=None,
+    prior_clicks=None,
+    prior_nonclicks=None
+):
+    if prior_mode == "ess":
         return beta_from_mean_and_ess(mean, ess)
-    elif prior_mode == "Mean click rate + approximate plausible range":
+    elif prior_mode == "range":
         return fit_beta_from_mean_and_interval(mean, lower, upper, interval_mass=0.95)
-    elif prior_mode == "Prior clicks + prior non-clicks":
+    elif prior_mode == "counts":
         return beta_from_clicks_and_nonclicks(prior_clicks, prior_nonclicks)
     else:
         raise ValueError("Unsupported prior mode.")
@@ -257,21 +265,25 @@ st.subheader("Step 3. Prior Structure")
 same_prior_for_all = st.toggle("Use the same prior for all variants", value=True)
 
 st.subheader("Step 4. Provide Your Expert Prior Estimate of the Click Rate")
+
+prior_mode_labels = {
+    "ess": "Expected click rate + effective sample size: what proportion of people click, and how strong is that prior belief?",
+    "range": "Expected click rate + approximate plausible range: what click rate do you expect, and what range seems plausible?",
+    "counts": "Prior clicks + prior non-clicks: how many clicks and non-clicks would you expect in a hypothetical prior sample?"
+}
+
 prior_mode = st.radio(
     "Choose how you want to express your prior belief about the click rate.",
-    options=[
-        "Expected click rate + effective sample size: what proportion of people who click out of total number of phishing emails sent?",
-        "Expected click rate + approximate plausible range: What is the expected proprtion of people who click in a given range?",
-        "Prior clicks + prior non-clicks: How many clicks to you expect to see and how many non-clicks?"
-    ]
+    options=["ess", "range", "counts"],
+    format_func=lambda x: prior_mode_labels[x]
 )
 
-if prior_mode == "Mean click rate + approximate plausible range":
+if prior_mode == "range":
     st.info(
         "In this option, the lower and upper values are treated as an approximate central 95% prior interval. "
         "The fitted Beta prior may differ slightly from the range you enter."
     )
-elif prior_mode == "Prior clicks + prior non-clicks":
+elif prior_mode == "counts":
     st.info(
         "In this option, you express the prior directly as pseudo-counts. "
         "For example, 2 clicks and 18 non-clicks give a prior mean click rate of 0.10."
@@ -288,7 +300,7 @@ prior_inputs = []
 if same_prior_for_all:
     st.markdown("### Common prior for all variants")
 
-    if prior_mode == "Mean click rate + effective sample size":
+    if prior_mode == "ess":
         mean = st.number_input(
             "I expect about this proportion of users to click",
             min_value=0.001,
@@ -309,7 +321,7 @@ if same_prior_for_all:
         prior_clicks = None
         prior_nonclicks = None
 
-    elif prior_mode == "Mean click rate + approximate plausible range":
+    elif prior_mode == "range":
         mean = st.number_input(
             "I think the click rate is about",
             min_value=0.001,
@@ -374,7 +386,7 @@ else:
     for i in range(k):
         st.markdown(f"### Prior for {variant_names[i]}")
 
-        if prior_mode == "Mean click rate + effective sample size":
+        if prior_mode == "ess":
             mean = st.number_input(
                 f"For {variant_names[i]}, I expect the click rate to be about",
                 min_value=0.001,
@@ -395,7 +407,7 @@ else:
             prior_clicks = None
             prior_nonclicks = None
 
-        elif prior_mode == "Mean click rate + approximate plausible range":
+        elif prior_mode == "range":
             mean = st.number_input(
                 f"For {variant_names[i]}, I think the click rate is about",
                 min_value=0.001,
@@ -464,15 +476,15 @@ mismatch_notes = []
 target_vs_fitted_rows = []
 
 for p in prior_inputs:
-    if prior_mode == "Mean click rate + effective sample size":
+    if prior_mode == "ess":
         is_valid = validate_mean_ess(p["mean"], p["ess"])
-    elif prior_mode == "Mean click rate + approximate plausible range":
+    elif prior_mode == "range":
         is_valid = validate_mean_range(p["mean"], p["low"], p["high"])
     else:
         is_valid = validate_clicks_nonclicks(p["prior_clicks"], p["prior_nonclicks"])
 
     if not is_valid:
-        if prior_mode == "Mean click rate + approximate plausible range":
+        if prior_mode == "range":
             st.error(
                 f"{p['name']}: invalid prior inputs. Make sure lower < mean < upper and that the range is not extremely narrow."
             )
@@ -495,7 +507,7 @@ for p in prior_inputs:
     ess_value = a + b
     fitted_mean = a / (a + b)
 
-    if prior_mode == "Mean click rate + approximate plausible range":
+    if prior_mode == "range":
         target_vs_fitted_rows.append({
             "Variant": p["name"],
             "Target interval": f"[{p['low']:.3f}, {p['high']:.3f}]",
@@ -530,14 +542,14 @@ for p in prior_inputs:
         "Fitted 95% CI": f"[{fitted_low:.3f}, {fitted_high:.3f}]"
     }
 
-    if prior_mode == "Mean click rate + approximate plausible range":
+    if prior_mode == "range":
         row["Input lower"] = round(p["low"], 4)
         row["Input upper"] = round(p["high"], 4)
 
-    if prior_mode == "Mean click rate + effective sample size":
+    if prior_mode == "ess":
         row["User-entered ESS"] = round(p["ess"], 3)
 
-    if prior_mode == "Prior clicks + prior non-clicks":
+    if prior_mode == "counts":
         row["Prior clicks"] = round(p["prior_clicks"], 3)
         row["Prior non-clicks"] = round(p["prior_nonclicks"], 3)
 
@@ -551,7 +563,7 @@ if prior_valid:
     for note in mismatch_notes:
         st.warning(note)
 
-    if prior_mode == "Mean click rate + approximate plausible range" and len(target_vs_fitted_rows) > 0:
+    if prior_mode == "range" and len(target_vs_fitted_rows) > 0:
         st.write("Entered ranges are targets. The model uses the fitted prior shown below.")
         st.dataframe(pd.DataFrame(target_vs_fitted_rows), use_container_width=True)
 
