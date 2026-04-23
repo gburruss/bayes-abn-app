@@ -260,9 +260,9 @@ st.subheader("Step 4. Provide Your Expert Prior Estimate of the Click Rate")
 prior_mode = st.radio(
     "Choose how you want to express your prior belief about the click rate.",
     options=[
-        "Mean click rate + effective sample size",
-        "Mean click rate + approximate plausible range",
-        "Prior clicks + prior non-clicks"
+        "Expected click rate + effective sample size: what proportion of people who click out of total number of phishing emails sent?",
+        "Expected click rate + approximate plausible range: What is the expected proprtion of people who click in a given range?",
+        "Prior clicks + prior non-clicks: How many clicks to you expect to see and how many non-clicks?"
     ]
 )
 
